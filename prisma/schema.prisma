@@ -1,0 +1,69 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// TABEL KARTU KELUARGA
+model KartuKeluarga {
+  id             Int     @id @default(autoincrement())
+  nomorKK        String  @unique // Harus UNIQUE sebagai kunci identitas KK dari berbagai HP
+  kepalaKeluarga String
+  alamatLengkap  String?
+  nomorRT        String?
+  nomorRW        String?
+  dusun          String?
+  desa           String?
+  kecamatan      String?
+  latitude       String?
+  longitude      String?
+
+  // Relasi: 1 KK punya banyak Warga
+  Warga          Warga[]
+}
+
+// TABEL WARGA
+model Warga {
+  id               Int     @id @default(autoincrement())
+  nik              String  @unique // Harus UNIQUE sebagai kunci identitas Warga
+  nomorRekamMedis  String?
+  nama             String
+  tanggalLahir     String?
+  jenisKelamin     String?
+  golonganDarah    String?
+  statusKeluarga   String?
+  pekerjaan        String?
+  pendidikan       String?
+  noHp             String?
+  statusPernikahan String?
+  statusKehamilan  String?
+  noBPJS           String?
+  alergi           String?
+  riwayatPenyakit  String?
+  disabilitas      String?
+  catatanKhusus    String?
+
+  // Relasi ke tabel KartuKeluarga berdasarkan Nomor KK (Bukan ID lokal HP)
+  nomorKkRel       String
+  KartuKeluarga    KartuKeluarga @relation(fields: [nomorKkRel], references: [nomorKK], onDelete: Cascade)
+}
+
+model User {
+  id           Int      @id @default(autoincrement())
+  namaLengkap  String
+  email        String   @unique
+  nomorTelepon String
+  wilayahKerja String
+  jabatan      String
+  password     String
+  fotoProfil   String?  
+  createdAt    DateTime @default(now())
+}
