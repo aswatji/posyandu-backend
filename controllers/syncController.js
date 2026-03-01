@@ -83,12 +83,10 @@ exports.pullData = async (req, res) => {
     const { wilayahKerja } = req.body;
 
     if (!wilayahKerja) {
-      return res
-        .status(400)
-        .json({
-          status: "gagal",
-          pesan: "Wilayah kerja Kader tidak diketahui.",
-        });
+      return res.status(400).json({
+        status: "gagal",
+        pesan: "Wilayah kerja Kader tidak diketahui.",
+      });
     }
 
     // 1. Ambil KK HANYA YANG BERADA DI DESA KADER TERSEBUT

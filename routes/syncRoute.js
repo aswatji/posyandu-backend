@@ -6,6 +6,7 @@ const { cekApiKey } = require("../middleware/authMiddleware");
 router.use(cekApiKey);
 
 router.post("/", syncController.syncData);
-router.get("/pull", syncController.pullData);
+// router.get("/pull", syncController.pullData);.
+router.post("/pull", syncController.pullData);
 
 module.exports = router;
