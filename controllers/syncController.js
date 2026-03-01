@@ -1,14 +1,26 @@
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
+// FUNGSI UNTUK SINKRONISASI DARI HP KE SERVER (PUSH)
 exports.syncData = async (req, res) => {
-  const { kartu_keluarga, warga } = req.body;
+  // TANGKAP wilayahKerja DARI HP KADER
+  const { kartu_keluarga, warga, wilayahKerja } = req.body;
+
+  if (!wilayahKerja) {
+    return res
+      .status(400)
+      .json({ status: "gagal", pesan: "Wilayah kerja Kader wajib dikirim!" });
+  }
 
   try {
     // 1. SINKRONISASI KARTU KELUARGA
     if (kartu_keluarga && kartu_keluarga.length > 0) {
       for (const kk of kartu_keluarga) {
         const { id, is_synced, is_deleted, ...kkData } = kk;
+
+        // KEAMANAN EKSTRA: Paksa kolom 'desa' menjadi wilayah kerja Kader
+        // agar Kader tidak bisa menginput data untuk desa lain.
+        kkData.desa = wilayahKerja;
 
         if (is_deleted === 1) {
           try {
@@ -34,6 +46,9 @@ exports.syncData = async (req, res) => {
         if (!w.nomorKkRel && w.is_deleted === 0) continue;
 
         const { id, kkId, is_synced, is_deleted, ...wargaData } = w;
+
+        // Validasi opsional: Kita bisa cek apakah nomorKkRel warga ini benar-benar ada di desa tersebut
+        // Tapi asumsikan relasi nomorKK sudah dikunci di sisi HP.
 
         if (is_deleted === 1) {
           try {
@@ -64,8 +79,31 @@ exports.syncData = async (req, res) => {
 // FUNGSI UNTUK MEMBERIKAN DATA KE HP (PULL)
 exports.pullData = async (req, res) => {
   try {
-    const kk = await prisma.kartuKeluarga.findMany();
-    const warga = await prisma.warga.findMany();
+    // TANGKAP wilayahKerja DARI HP KADER (Bisa lewat params atau body POST)
+    const { wilayahKerja } = req.body;
+
+    if (!wilayahKerja) {
+      return res
+        .status(400)
+        .json({
+          status: "gagal",
+          pesan: "Wilayah kerja Kader tidak diketahui.",
+        });
+    }
+
+    // 1. Ambil KK HANYA YANG BERADA DI DESA KADER TERSEBUT
+    const kk = await prisma.kartuKeluarga.findMany({
+      where: { desa: wilayahKerja },
+    });
+
+    // 2. Ambil Warga HANYA YANG KK-NYA BERADA DI DESA KADER TERSEBUT
+    const warga = await prisma.warga.findMany({
+      where: {
+        KartuKeluarga: {
+          desa: wilayahKerja,
+        },
+      },
+    });
 
     res.status(200).json({
       status: "sukses",
