@@ -4,21 +4,14 @@ const prisma = new PrismaClient();
 
 exports.exportKeSpreadsheet = async (req, res) => {
   try {
-    // const auth = new google.auth.GoogleAuth({
-    //   keyFile: "sheetgoogle.json",
-    //   scopes: ["https://www.googleapis.com/auth/spreadsheets"],
-    // });
     let authOptions = {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     };
 
-    // 2. Cek apakah ini di server CapRover atau di Laptop Lokal
     if (process.env.GOOGLE_CREDENTIALS) {
-      // Jika di CapRover, baca teks rahasia dari Environment Variable
       authOptions.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
     } else {
-      // Jika di laptop lokal, baca dari file JSON
-      authOptions.keyFile = "sheetgoogle.json"; // (Pastikan namanya sesuai dengan yang di laptopmu)
+      authOptions.keyFile = "sheetgoogle.json";
     }
 
     const auth = new google.auth.GoogleAuth(authOptions);
@@ -45,6 +38,9 @@ exports.exportKeSpreadsheet = async (req, res) => {
         "Kecamatan",
         "Latitude",
         "Longitude",
+        "Diinput Oleh",
+        "Tgl Dibuat",
+        "Terakhir Diedit", // <-- KOLOM BARU
       ],
     ];
 
@@ -61,6 +57,9 @@ exports.exportKeSpreadsheet = async (req, res) => {
         kk.kecamatan || "-",
         kk.latitude || "-",
         kk.longitude || "-",
+        kk.diinputOleh || "-", // <-- DATA BARU
+        kk.createdAt ? new Date(kk.createdAt).toLocaleDateString("id-ID") : "-",
+        kk.updatedAt ? new Date(kk.updatedAt).toLocaleDateString("id-ID") : "-",
       ]);
     });
 
@@ -90,6 +89,9 @@ exports.exportKeSpreadsheet = async (req, res) => {
         "Riwayat Penyakit",
         "Disabilitas",
         "Catatan Khusus",
+        "Diinput Oleh",
+        "Tgl Dibuat",
+        "Terakhir Diedit", // <-- KOLOM BARU
       ],
     ];
 
@@ -114,11 +116,18 @@ exports.exportKeSpreadsheet = async (req, res) => {
         warga.riwayatPenyakit || "-",
         warga.disabilitas || "-",
         warga.catatanKhusus || "-",
+        warga.diinputOleh || "-", // <-- DATA BARU
+        warga.createdAt
+          ? new Date(warga.createdAt).toLocaleDateString("id-ID")
+          : "-",
+        warga.updatedAt
+          ? new Date(warga.updatedAt).toLocaleDateString("id-ID")
+          : "-",
       ]);
     });
 
     // =================================================================
-    // PROSES 3: AMBIL & SUSUN DATA USER (PERAWAT, BIDAN, DLL)
+    // PROSES 3: AMBIL & SUSUN DATA USER
     // =================================================================
     const dataUser = await prisma.user.findMany();
 
@@ -131,30 +140,30 @@ exports.exportKeSpreadsheet = async (req, res) => {
         "Wilayah Kerja",
         "Jabatan",
         "Tgl Bergabung",
+        "Terakhir Update Profil", // <-- KOLOM BARU
       ],
     ];
 
     dataUser.forEach((user, index) => {
-      const tglDibuat = user.createdAt
-        ? new Date(user.createdAt).toLocaleDateString("id-ID")
-        : "-";
-
       barisExcelUser.push([
         index + 1,
         user.namaLengkap || "-",
         user.email || "-",
         user.nomorTelepon || "-",
         user.wilayahKerja || "-",
-        user.jabatan || "-", // <-- Jabatan (Perawat/Bidan/Kader) akan muncul di sini
-        tglDibuat,
+        user.jabatan || "-",
+        user.createdAt
+          ? new Date(user.createdAt).toLocaleDateString("id-ID")
+          : "-",
+        user.updatedAt
+          ? new Date(user.updatedAt).toLocaleDateString("id-ID")
+          : "-", // <-- DATA BARU
       ]);
     });
 
     // =================================================================
-    // PROSES 4: TULIS KE GOOGLE SHEETS MASING-MASING TAB
+    // PROSES 4: TULIS KE GOOGLE SHEETS
     // =================================================================
-
-    // Tulis ke tab "Data KK"
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: "Data KK!A1",
@@ -162,7 +171,6 @@ exports.exportKeSpreadsheet = async (req, res) => {
       resource: { values: barisExcelKK },
     });
 
-    // Tulis ke tab "Data Warga"
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
       range: "Data Warga!A1",
@@ -170,10 +178,9 @@ exports.exportKeSpreadsheet = async (req, res) => {
       resource: { values: barisExcelWarga },
     });
 
-    // Tulis ke tab "Data User"
     await sheets.spreadsheets.values.update({
       spreadsheetId: SPREADSHEET_ID,
-      range: "Data User!A1", // <-- Mengarah ke sheet baru bernama "Data User"
+      range: "Data User!A1",
       valueInputOption: "USER_ENTERED",
       resource: { values: barisExcelUser },
     });
@@ -181,14 +188,13 @@ exports.exportKeSpreadsheet = async (req, res) => {
     res.status(200).json({
       status: "sukses",
       pesan:
-        "Berhasil! Data KK, Warga, dan User sudah diekspor ke sheet masing-masing.",
+        "Berhasil! Data lengkap dengan jejak audit sudah diekspor ke Excel.",
     });
   } catch (error) {
     console.error("Gagal ekspor ke Google Sheets:", error);
     res.status(500).json({
       status: "gagal",
-      pesan:
-        "Gagal mengekspor data. Pastikan nama Sheet di Excel sudah benar (Data KK, Data Warga, Data User).",
+      pesan: "Gagal mengekspor data. Cek log server.",
     });
   }
 };
