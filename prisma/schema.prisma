@@ -1,8 +1,6 @@
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
 generator client {
   provider = "prisma-client-js"
 }
@@ -25,6 +23,11 @@ model KartuKeluarga {
   kecamatan      String?
   latitude       String?
   longitude      String?
+
+  // --- KOLOM PELACAKAN (AUDIT) ---
+  diinputOleh    String?   // Menyimpan Nama/Email Kader yang pertama kali input
+  createdAt      DateTime  @default(now()) // Otomatis catat waktu dibuat
+ updatedAt      DateTime  @updatedAt @default(now())      // Otomatis catat waktu terakhir diedit
 
   // Relasi: 1 KK punya banyak Warga
   Warga          Warga[]
@@ -51,7 +54,12 @@ model Warga {
   disabilitas      String?
   catatanKhusus    String?
 
-  // Relasi ke tabel KartuKeluarga berdasarkan Nomor KK (Bukan ID lokal HP)
+  // --- KOLOM PELACAKAN (AUDIT) ---
+  diinputOleh      String?   // Menyimpan Nama/Email Kader yang pertama kali input
+  createdAt        DateTime  @default(now()) // Otomatis catat waktu dibuat
+ updatedAt      DateTime  @updatedAt @default(now())     // Otomatis catat waktu terakhir diedit
+
+  // Relasi ke tabel KartuKeluarga
   nomorKkRel       String
   KartuKeluarga    KartuKeluarga @relation(fields: [nomorKkRel], references: [nomorKK], onDelete: Cascade)
 }
@@ -65,5 +73,7 @@ model User {
   jabatan      String
   password     String
   fotoProfil   String?  
+  
   createdAt    DateTime @default(now())
+ updatedAt      DateTime  @updatedAt @default(now()) // Tambahan agar tahu kapan user ini update profil
 }
