@@ -6,6 +6,7 @@ const kkRoute = require("./routes/kkRoute");
 const wargaRoute = require("./routes/wargaRoute");
 const syncRoute = require("./routes/syncRoute");
 const authRoute = require("./routes/authRoute");
+const exportRoute = require("./routes/exportRoute");
 
 const app = express();
 
@@ -18,6 +19,7 @@ app.use("/api/kk", kkRoute);
 app.use("/api/warga", wargaRoute);
 app.use("/api/sync", syncRoute);
 app.use("/api/auth", authRoute);
+app.use("/api/export", exportRoute);
 
 // Route Default untuk tes server
 app.get("/", (req, res) => {
