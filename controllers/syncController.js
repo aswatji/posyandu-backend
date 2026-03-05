@@ -113,3 +113,20 @@ exports.pullData = async (req, res) => {
     res.status(500).json({ status: "gagal", pesan: error.message });
   }
 };
+
+exports.checkVersion = async (req, res) => {
+  try {
+    // Saat ini kita hardcode dulu, tapi karena kamu sudah pakai Prisma,
+    // suatu saat nanti data ini bisa diambil dari database jika kamu buat tabel 'Settings'
+    res.status(200).json({
+      latestVersion: "1.0.2",
+      minVersion: "1.0.1",
+      updateUrl: "https://link-ke-apk-baru-atau-playstore.com", // Ganti dengan link APK kamu
+      message:
+        "Ada pembaruan fitur baru untuk aplikasi Posyandu. Wajib update ya, Bu Kader!",
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({ status: "gagal", pesan: error.message });
+  }
+};
