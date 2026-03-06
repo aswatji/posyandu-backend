@@ -8,6 +8,6 @@ router.use(cekApiKey);
 router.post("/", syncController.syncData);
 // router.get("/pull", syncController.pullData);.
 router.post("/pull", syncController.pullData);
-router.get("/check-version", checkVersion);
+router.get("/check-version", syncController.checkVersion);
 
 module.exports = router;
