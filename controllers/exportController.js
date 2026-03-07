@@ -230,16 +230,18 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
     // =================================================================
     const semuaTabel = Prisma.dmmf.datamodel.models; // Baca semua struktur tabel dari Prisma
 
-    // WHITELIST: Daftar nama tabel (Model) di database yang dizinkan untuk diekspor.
-    // Tambahkan nama tabel baru di sini jika database Anda berkembang.
+    // WHITELIST: Daftar nama tabel di database yang diizinkan untuk diekspor.
     const tabelYangDiekspor = ["KartuKeluarga", "Warga", "User"];
 
     // Ambil info nama-nama sheet yang sudah ada di Excel saat ini
     const infoSpreadsheet = await sheets.spreadsheets.get({
       spreadsheetId: SPREADSHEET_ID,
     });
-    const sheetYangSudahAda = infoSpreadsheet.data.sheets.map(
-      (s) => s.properties.title,
+
+    // PERBAIKAN: Ubah semua nama sheet di Google jadi huruf kecil & buang spasi ujung
+    // Ini mencegah error "Sheet already exists" jika ada perbedaan huruf besar/kecil
+    const sheetYangSudahAda = infoSpreadsheet.data.sheets.map((s) =>
+      s.properties.title.toLowerCase().trim(),
     );
 
     // =================================================================
@@ -255,31 +257,43 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
       const namaDelegate =
         namaModel.charAt(0).toLowerCase() + namaModel.slice(1);
 
+      // Format nama sheet target ke huruf kecil agar bisa dicocokkan dengan aman
+      const namaSheetKecil = namaSheet.toLowerCase().trim();
+
       console.log(`\nMemproses tabel: ${namaModel}...`);
 
-      // --- A. Buat Sheet Baru Jika Belum Ada ---
-      if (!sheetYangSudahAda.includes(namaSheet)) {
-        await sheets.spreadsheets.batchUpdate({
-          spreadsheetId: SPREADSHEET_ID,
-          resource: {
-            requests: [{ addSheet: { properties: { title: namaSheet } } }],
-          },
-        });
-        sheetYangSudahAda.push(namaSheet); // Catat agar tidak dibuat ganda
+      // --- A. Buat Sheet Baru Jika Belum Ada (Dengan Jaring Pengaman) ---
+      if (!sheetYangSudahAda.includes(namaSheetKecil)) {
+        try {
+          await sheets.spreadsheets.batchUpdate({
+            spreadsheetId: SPREADSHEET_ID,
+            resource: {
+              requests: [{ addSheet: { properties: { title: namaSheet } } }],
+            },
+          });
+          sheetYangSudahAda.push(namaSheetKecil); // Catat agar tidak dibuat ganda di putaran selanjutnya
+          console.log(`- Sheet "${namaSheet}" berhasil dibuat.`);
+        } catch (errSheet) {
+          // Jika masih error karena bentrok nama di Google API, kita abaikan dan lanjut
+          console.log(
+            `- Info: Sheet "${namaSheet}" sepertinya sudah ada, melangkah ke proses data...`,
+          );
+        }
       }
 
       // --- B. Kuras/Bersihkan Data Lama di Sheet ---
       await sheets.spreadsheets.values.clear({
         spreadsheetId: SPREADSHEET_ID,
-        range: namaSheet,
+        range: namaSheet, // Menghapus seluruh isi dalam tab ini
       });
+      console.log(`- Data lama di "${namaSheet}" sudah dibersihkan.`);
 
       // --- C. Susun & Tulis Header Secara Otomatis ---
-      // Ambil field biasa (scalar), abaikan field relasi antar tabel
+      // Ambil field biasa (scalar), abaikan field relasi antar tabel (seperti list/object)
       const kolomDatabase = tabel.fields.filter(
         (field) => field.kind === "scalar",
       );
-      // Baris pertama berisi "No" dan nama-nama kolom dari database
+      // Baris pertama berisi "No" dan nama-nama kolom asli dari database
       const headerKolom = ["No", ...kolomDatabase.map((field) => field.name)];
 
       await sheets.spreadsheets.values.update({
@@ -305,7 +319,7 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
         if (dataBatch.length === 0) {
           masihAdaData = false;
           console.log(
-            `✅ Selesai! Total ${barisKe} baris diekspor ke ${namaSheet}.`,
+            `✅ Selesai! Total ${barisKe} baris diekspor ke "${namaSheet}".`,
           );
           break;
         }
@@ -338,7 +352,7 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
           resource: { values: barisExcel },
         });
 
-        barisKe += ukuranCicilan;
+        barisKe += dataBatch.length; // Tambahkan jumlah data yang benar-benar ditarik
         console.log(`- Mengirim cicilan... (Total terkirim: ${barisKe} baris)`);
       }
     }
@@ -348,13 +362,14 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
     // =================================================================
     res.status(200).json({
       status: "sukses",
-      pesan: "Berhasil! Ekspor otomatis semua data skala besar selesai.",
+      pesan:
+        "Berhasil! Ekspor otomatis semua data skala besar selesai tanpa kendala.",
     });
   } catch (error) {
-    console.error("Gagal melakukan ekspor data:", error);
+    console.error("❌ Gagal melakukan ekspor data:", error);
     res.status(500).json({
       status: "gagal",
-      pesan: "Gagal mengekspor data. Silakan cek log server.",
+      pesan: "Gagal mengekspor data. Silakan cek log server untuk detailnya.",
     });
   }
 };
