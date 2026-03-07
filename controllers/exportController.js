@@ -230,6 +230,7 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
       "image",
       "file",
       "token",
+      "fotoProfil",
     ];
 
     const infoSpreadsheet = await sheets.spreadsheets.get({
