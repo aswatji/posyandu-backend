@@ -198,20 +198,15 @@
 //     });
 //   }
 // };
-
 const { google } = require("googleapis");
 const { PrismaClient, Prisma } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
   try {
-    // =================================================================
-    // 1. OTENTIKASI GOOGLE API
-    // =================================================================
     let authOptions = {
       scopes: ["https://www.googleapis.com/auth/spreadsheets"],
     };
-
     if (process.env.GOOGLE_CREDENTIALS) {
       authOptions.credentials = JSON.parse(process.env.GOOGLE_CREDENTIALS);
     } else {
@@ -221,48 +216,40 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
     const auth = new google.auth.GoogleAuth(authOptions);
     const client = await auth.getClient();
     const sheets = google.sheets({ version: "v4", auth: client });
-
-    // Ganti SPREADSHEET_ID ini sesuai dengan ID file Google Sheets tujuan
     const SPREADSHEET_ID = "1xzsDoZVkFXqYQPJs6qSpPqhkLGq6sUkAjznzb-QW3fw";
 
-    // =================================================================
-    // 2. PERSIAPAN SISTEM DINAMIS (BACA DATABASE)
-    // =================================================================
-    const semuaTabel = Prisma.dmmf.datamodel.models; // Baca semua struktur tabel dari Prisma
-
-    // WHITELIST: Daftar nama tabel di database yang diizinkan untuk diekspor.
+    const semuaTabel = Prisma.dmmf.datamodel.models;
     const tabelYangDiekspor = ["KartuKeluarga", "Warga", "User"];
 
-    // Ambil info nama-nama sheet yang sudah ada di Excel saat ini
+    // --- FITUR BARU 1: BLACKLIST KOLOM ---
+    // Tambahkan nama kolom yang TIDAK BOLEH ikut diekspor ke Excel
+    const kolomBlacklist = [
+      "password",
+      "foto",
+      "avatar",
+      "image",
+      "file",
+      "token",
+    ];
+
     const infoSpreadsheet = await sheets.spreadsheets.get({
       spreadsheetId: SPREADSHEET_ID,
     });
-
-    // PERBAIKAN: Ubah semua nama sheet di Google jadi huruf kecil & buang spasi ujung
-    // Ini mencegah error "Sheet already exists" jika ada perbedaan huruf besar/kecil
     const sheetYangSudahAda = infoSpreadsheet.data.sheets.map((s) =>
       s.properties.title.toLowerCase().trim(),
     );
 
-    // =================================================================
-    // 3. MESIN UTAMA: LOOPING TABEL & CHUNKING (PENCICILAN DATA)
-    // =================================================================
     for (const tabel of semuaTabel) {
-      // Lewati tabel jika namanya tidak ada di dalam Whitelist
       if (!tabelYangDiekspor.includes(tabel.name)) continue;
 
-      const namaModel = tabel.name; // Contoh: "Warga"
-      const namaSheet = "Data " + namaModel; // Menjadi: "Data Warga"
-      // Format pemanggilan Prisma (huruf awal kecil), contoh: prisma.warga
+      const namaModel = tabel.name;
+      const namaSheet = "Data " + namaModel;
       const namaDelegate =
         namaModel.charAt(0).toLowerCase() + namaModel.slice(1);
-
-      // Format nama sheet target ke huruf kecil agar bisa dicocokkan dengan aman
       const namaSheetKecil = namaSheet.toLowerCase().trim();
 
       console.log(`\nMemproses tabel: ${namaModel}...`);
 
-      // --- A. Buat Sheet Baru Jika Belum Ada (Dengan Jaring Pengaman) ---
       if (!sheetYangSudahAda.includes(namaSheetKecil)) {
         try {
           await sheets.spreadsheets.batchUpdate({
@@ -271,29 +258,28 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
               requests: [{ addSheet: { properties: { title: namaSheet } } }],
             },
           });
-          sheetYangSudahAda.push(namaSheetKecil); // Catat agar tidak dibuat ganda di putaran selanjutnya
-          console.log(`- Sheet "${namaSheet}" berhasil dibuat.`);
+          sheetYangSudahAda.push(namaSheetKecil);
         } catch (errSheet) {
-          // Jika masih error karena bentrok nama di Google API, kita abaikan dan lanjut
           console.log(
-            `- Info: Sheet "${namaSheet}" sepertinya sudah ada, melangkah ke proses data...`,
+            `- Info: Sheet "${namaSheet}" sudah ada, melangkah ke proses data...`,
           );
         }
       }
 
-      // --- B. Kuras/Bersihkan Data Lama di Sheet ---
       await sheets.spreadsheets.values.clear({
         spreadsheetId: SPREADSHEET_ID,
-        range: namaSheet, // Menghapus seluruh isi dalam tab ini
+        range: namaSheet,
       });
-      console.log(`- Data lama di "${namaSheet}" sudah dibersihkan.`);
 
-      // --- C. Susun & Tulis Header Secara Otomatis ---
-      // Ambil field biasa (scalar), abaikan field relasi antar tabel (seperti list/object)
-      const kolomDatabase = tabel.fields.filter(
-        (field) => field.kind === "scalar",
-      );
-      // Baris pertama berisi "No" dan nama-nama kolom asli dari database
+      // --- PERBAIKAN HEADER: Filter kolom menggunakan Blacklist ---
+      const kolomDatabase = tabel.fields.filter((field) => {
+        const namaKolomKecil = field.name.toLowerCase();
+        // Hanya ambil field scalar DAN namanya tidak ada di dalam kolomBlacklist
+        return (
+          field.kind === "scalar" && !kolomBlacklist.includes(namaKolomKecil)
+        );
+      });
+
       const headerKolom = ["No", ...kolomDatabase.map((field) => field.name)];
 
       await sheets.spreadsheets.values.update({
@@ -303,19 +289,16 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
         resource: { values: [headerKolom] },
       });
 
-      // --- D. Proses Chunking (Mencicil Ekspor per 5.000 Baris) ---
       const ukuranCicilan = 5000;
       let barisKe = 0;
       let masihAdaData = true;
 
       while (masihAdaData) {
-        // Tarik data dari database sesuai limit (take) dan offset (skip)
         const dataBatch = await prisma[namaDelegate].findMany({
           take: ukuranCicilan,
           skip: barisKe,
         });
 
-        // Jika gudang sudah kosong, hentikan perulangan (while)
         if (dataBatch.length === 0) {
           masihAdaData = false;
           console.log(
@@ -324,26 +307,30 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
           break;
         }
 
-        // Format data mentah dari database menjadi format baris Excel
         const barisExcel = dataBatch.map((item, index) => {
-          const barisIni = [barisKe + index + 1]; // Nomor urut berlanjut otomatis
+          const barisIni = [barisKe + index + 1];
 
           kolomDatabase.forEach((field) => {
             let nilai = item[field.name];
 
-            // Konversi tanggal ke format Indonesia
             if (nilai instanceof Date) {
               nilai = nilai.toLocaleDateString("id-ID");
             }
 
-            // Masukkan nilai. Jika kosong/null, ganti dengan tanda "-"
+            // --- FITUR BARU 2: PEMOTONG TEKS (TRUNCATE) ---
+            // Jika datanya adalah teks dan panjangnya melebihi 45.000 karakter, potong!
+            if (typeof nilai === "string" && nilai.length > 45000) {
+              nilai =
+                nilai.substring(0, 45000) +
+                " ...[DATA TERLALU PANJANG, TERPOTONG OLEH SISTEM]";
+            }
+
             barisIni.push(nilai !== null && nilai !== undefined ? nilai : "-");
           });
 
           return barisIni;
         });
 
-        // Tempelkan (Append) data batch ini ke baris kosong paling bawah di Excel
         await sheets.spreadsheets.values.append({
           spreadsheetId: SPREADSHEET_ID,
           range: `${namaSheet}!A1`,
@@ -352,14 +339,11 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
           resource: { values: barisExcel },
         });
 
-        barisKe += dataBatch.length; // Tambahkan jumlah data yang benar-benar ditarik
+        barisKe += dataBatch.length;
         console.log(`- Mengirim cicilan... (Total terkirim: ${barisKe} baris)`);
       }
     }
 
-    // =================================================================
-    // 4. RESPON BERHASIL KE FRONTEND
-    // =================================================================
     res.status(200).json({
       status: "sukses",
       pesan:
