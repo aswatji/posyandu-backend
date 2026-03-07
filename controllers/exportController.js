@@ -314,9 +314,15 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
             let nilai = item[field.name];
 
             if (nilai instanceof Date) {
-              nilai = nilai.toLocaleDateString("id-ID");
-            }
+              const tgl = String(nilai.getDate()).padStart(2, "0");
+              const bln = String(nilai.getMonth() + 1).padStart(2, "0");
+              const thn = nilai.getFullYear();
+              const jam = String(nilai.getHours()).padStart(2, "0");
+              const mnt = String(nilai.getMinutes()).padStart(2, "0");
 
+              // Tanda petik tunggal (') memaksa Google Sheets membacanya sebagai teks rapi
+              nilai = `'${tgl}/${bln}/${thn} ${jam}:${mnt}`;
+            }
             // --- FITUR BARU 2: PEMOTONG TEKS (TRUNCATE) ---
             // Jika datanya adalah teks dan panjangnya melebihi 45.000 karakter, potong!
             if (typeof nilai === "string" && nilai.length > 45000) {
