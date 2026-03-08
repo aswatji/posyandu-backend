@@ -8,7 +8,7 @@ const upsertDataKeluarga = async (req, res) => {
   try {
     // 🔥 PERBAIKAN DI SINI:
     // Pisahkan nomorKkRel dan namaKepalaKeluarga agar tidak ikut tersimpan ke dataLingkungan
-    const { nomorKkRel, namaKepalaKeluarga, ...dataLingkungan } = req.body;
+    const { nomorKkRel, ...dataLingkungan } = req.body;
 
     // Validasi dasar
     if (!nomorKkRel) {

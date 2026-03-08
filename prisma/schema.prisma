@@ -122,7 +122,7 @@ model KartuKeluarga {
 model DataKeluarga {
   id                  Int      @id @default(autoincrement())
   nomorKkRel          String   @unique // Wajib UNIQUE agar relasinya 1-to-1 dengan KartuKeluarga
-  
+  namaKepalaKeluarga  String?
   // --- KOMPOSISI ANGGOTA KELUARGA ---
   jmlTotal            Int?     @default(0)
   jmlLansia           Int?     @default(0)
