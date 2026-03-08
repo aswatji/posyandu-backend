@@ -134,18 +134,18 @@ model DataKeluarga {
   jmlBumil            Int?     @default(0)
 
   // --- KESEHATAN & LINGKUNGAN (Pilihan Ya/Tidak) ---
-  punyaJKN            Boolean?
-  airBersih           Boolean?
-  airTerlindung       Boolean?
-  punyaJamban         Boolean?
-  jambanSaniter       Boolean?
-  ventilasiCukup      Boolean?
+  punyaJKN            String?
+  airBersih           String?
+  airTerlindung       String?
+  punyaJamban         String?
+  jambanSaniter       String?
+  ventilasiCukup      String?
   
   // --- RIWAYAT PENYAKIT (Pilihan Ya/Tidak) ---
-  gangguanJiwa        Boolean?
-  penyakitTBC         Boolean? @default(false)
-  penyakitHipertensi  Boolean? @default(false)
-  penyakitDM          Boolean? @default(false)
+  gangguanJiwa        String?
+  penyakitTBC         String? @default("Tidak")
+  penyakitHipertensi  String? @default("Tidak")
+  penyakitDM          String? @default("Tidak")
 
   // --- KOLOM PELACAKAN (AUDIT) ---
   diinputOleh         String?
