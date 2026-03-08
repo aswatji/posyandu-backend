@@ -7,6 +7,7 @@ const wargaRoute = require("./routes/wargaRoute");
 const syncRoute = require("./routes/syncRoute");
 const authRoute = require("./routes/authRoute");
 const exportRoute = require("./routes/exportRoute");
+const dataKeluargaRoute = require("./routes/dataKeluargaRoutes");
 
 const app = express();
 
@@ -20,6 +21,7 @@ app.use("/api/warga", wargaRoute);
 app.use("/api/sync", syncRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/export", exportRoute);
+app.use("/api/data-keluarga", dataKeluargaRoute);
 
 // Route Default untuk tes server
 app.get("/", (req, res) => {

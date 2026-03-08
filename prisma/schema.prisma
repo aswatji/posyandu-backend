@@ -1,3 +1,83 @@
+// // This is your Prisma schema file,
+// // learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// generator client {
+//   provider = "prisma-client-js"
+// }
+
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+// // TABEL KARTU KELUARGA
+// model KartuKeluarga {
+//   id             Int     @id @default(autoincrement())
+//   nomorKK        String  @unique // Harus UNIQUE sebagai kunci identitas KK dari berbagai HP
+//   kepalaKeluarga String
+//   alamatLengkap  String?
+//   nomorRT        String?
+//   nomorRW        String?
+//   dusun          String?
+//   desa           String?
+//   kecamatan      String?
+//   latitude       String?
+//   longitude      String?
+
+//   // --- KOLOM PELACAKAN (AUDIT) ---
+//   diinputOleh    String?   // Menyimpan Nama/Email Kader yang pertama kali input
+//   createdAt      DateTime  @default(now()) // Otomatis catat waktu dibuat
+//  updatedAt      DateTime  @updatedAt @default(now())      // Otomatis catat waktu terakhir diedit
+
+//   // Relasi: 1 KK punya banyak Warga
+//   Warga          Warga[]
+// }
+
+// // TABEL WARGA
+// model Warga {
+//   id               Int     @id @default(autoincrement())
+//   nik              String  @unique // Harus UNIQUE sebagai kunci identitas Warga
+//   nomorRekamMedis  String?
+//   nama             String
+//   tanggalLahir     String?
+//   jenisKelamin     String?
+//   golonganDarah    String?
+//   statusKeluarga   String?
+//   pekerjaan        String?
+//   pendidikan       String?
+//   noHp             String?
+//   statusPernikahan String?
+//   statusKehamilan  String?
+//   noBPJS           String?
+//   alergi           String?
+//   riwayatPenyakit  String?
+//   disabilitas      String?
+//   catatanKhusus    String?
+
+//   // --- KOLOM PELACAKAN (AUDIT) ---
+//   diinputOleh      String?   // Menyimpan Nama/Email Kader yang pertama kali input
+//   createdAt        DateTime  @default(now()) // Otomatis catat waktu dibuat
+//  updatedAt      DateTime  @updatedAt @default(now())     // Otomatis catat waktu terakhir diedit
+
+//   // Relasi ke tabel KartuKeluarga
+//   nomorKkRel       String
+//   KartuKeluarga    KartuKeluarga @relation(fields: [nomorKkRel], references: [nomorKK], onDelete: Cascade)
+// }
+
+// model User {
+//   id           Int      @id @default(autoincrement())
+//   namaLengkap  String
+//   email        String   @unique
+//   nomorTelepon String
+//   wilayahKerja String
+//   jabatan      String
+//   password     String
+//   fotoProfil   String?  
+  
+//   createdAt    DateTime @default(now())
+//  updatedAt      DateTime  @updatedAt @default(now()) // Tambahan agar tahu kapan user ini update profil
+// }
+
 // This is your Prisma schema file,
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
@@ -10,10 +90,12 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-// TABEL KARTU KELUARGA
+// ==========================================
+// 1. TABEL KARTU KELUARGA (INDUK)
+// ==========================================
 model KartuKeluarga {
-  id             Int     @id @default(autoincrement())
-  nomorKK        String  @unique // Harus UNIQUE sebagai kunci identitas KK dari berbagai HP
+  id             Int      @id @default(autoincrement())
+  nomorKK        String   @unique // Harus UNIQUE sebagai kunci identitas KK dari berbagai HP
   kepalaKeluarga String
   alamatLengkap  String?
   nomorRT        String?
@@ -27,16 +109,59 @@ model KartuKeluarga {
   // --- KOLOM PELACAKAN (AUDIT) ---
   diinputOleh    String?   // Menyimpan Nama/Email Kader yang pertama kali input
   createdAt      DateTime  @default(now()) // Otomatis catat waktu dibuat
- updatedAt      DateTime  @updatedAt @default(now())      // Otomatis catat waktu terakhir diedit
+  updatedAt      DateTime  @updatedAt @default(now()) // Otomatis catat waktu terakhir diedit
 
-  // Relasi: 1 KK punya banyak Warga
+  // --- RELASI ---
   Warga          Warga[]
+  DataKeluarga   DataKeluarga? // Relasi 1-to-1 ke form kuesioner Data Keluarga
 }
 
-// TABEL WARGA
+// ==========================================
+// 2. TABEL DATA KELUARGA (KUESIONER LINGKUNGAN)
+// ==========================================
+model DataKeluarga {
+  id                  Int      @id @default(autoincrement())
+  nomorKkRel          String   @unique // Wajib UNIQUE agar relasinya 1-to-1 dengan KartuKeluarga
+  
+  // --- KOMPOSISI ANGGOTA KELUARGA ---
+  jmlTotal            Int?     @default(0)
+  jmlLansia           Int?     @default(0)
+  jmlDewasa           Int?     @default(0)
+  jmlRemaja           Int?     @default(0)
+  jmlBalita           Int?     @default(0)
+  jmlBayi             Int?     @default(0)
+  jmlNifas            Int?     @default(0)
+  jmlBumil            Int?     @default(0)
+
+  // --- KESEHATAN & LINGKUNGAN (Pilihan Ya/Tidak) ---
+  punyaJKN            Boolean?
+  airBersih           Boolean?
+  airTerlindung       Boolean?
+  punyaJamban         Boolean?
+  jambanSaniter       Boolean?
+  ventilasiCukup      Boolean?
+  
+  // --- RIWAYAT PENYAKIT (Pilihan Ya/Tidak) ---
+  gangguanJiwa        Boolean?
+  penyakitTBC         Boolean? @default(false)
+  penyakitHipertensi  Boolean? @default(false)
+  penyakitDM          Boolean? @default(false)
+
+  // --- KOLOM PELACAKAN (AUDIT) ---
+  diinputOleh         String?
+  createdAt           DateTime @default(now())
+  updatedAt           DateTime @updatedAt @default(now())
+
+  // --- RELASI KE TABEL KARTU KELUARGA ---
+  KartuKeluarga       KartuKeluarga @relation(fields: [nomorKkRel], references: [nomorKK], onDelete: Cascade)
+}
+
+// ==========================================
+// 3. TABEL WARGA (ANGGOTA KELUARGA)
+// ==========================================
 model Warga {
-  id               Int     @id @default(autoincrement())
-  nik              String  @unique // Harus UNIQUE sebagai kunci identitas Warga
+  id               Int      @id @default(autoincrement())
+  nik              String   @unique // Harus UNIQUE sebagai kunci identitas Warga
   nomorRekamMedis  String?
   nama             String
   tanggalLahir     String?
@@ -55,15 +180,18 @@ model Warga {
   catatanKhusus    String?
 
   // --- KOLOM PELACAKAN (AUDIT) ---
-  diinputOleh      String?   // Menyimpan Nama/Email Kader yang pertama kali input
-  createdAt        DateTime  @default(now()) // Otomatis catat waktu dibuat
- updatedAt      DateTime  @updatedAt @default(now())     // Otomatis catat waktu terakhir diedit
+  diinputOleh      String?   
+  createdAt        DateTime  @default(now()) 
+  updatedAt        DateTime  @updatedAt @default(now())     
 
   // Relasi ke tabel KartuKeluarga
   nomorKkRel       String
   KartuKeluarga    KartuKeluarga @relation(fields: [nomorKkRel], references: [nomorKK], onDelete: Cascade)
 }
 
+// ==========================================
+// 4. TABEL USER (KADER)
+// ==========================================
 model User {
   id           Int      @id @default(autoincrement())
   namaLengkap  String
@@ -75,5 +203,5 @@ model User {
   fotoProfil   String?  
   
   createdAt    DateTime @default(now())
- updatedAt      DateTime  @updatedAt @default(now()) // Tambahan agar tahu kapan user ini update profil
+  updatedAt    DateTime @updatedAt @default(now())
 }
