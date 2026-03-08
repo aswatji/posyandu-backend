@@ -219,7 +219,12 @@ exports.exportKeSpreadsheetFullOtomatis = async (req, res) => {
     const SPREADSHEET_ID = "1xzsDoZVkFXqYQPJs6qSpPqhkLGq6sUkAjznzb-QW3fw";
 
     const semuaTabel = Prisma.dmmf.datamodel.models;
-    const tabelYangDiekspor = ["KartuKeluarga", "Warga", "User"];
+    const tabelYangDiekspor = [
+      "KartuKeluarga",
+      "Warga",
+      "User",
+      "DataKeluarga",
+    ];
 
     // --- FITUR BARU 1: BLACKLIST KOLOM ---
     // Tambahkan nama kolom yang TIDAK BOLEH ikut diekspor ke Excel
