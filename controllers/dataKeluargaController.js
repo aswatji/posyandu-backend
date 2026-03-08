@@ -6,7 +6,9 @@ const prisma = new PrismaClient();
 // ========================================================
 const upsertDataKeluarga = async (req, res) => {
   try {
-    const { nomorKkRel, ...dataLingkungan } = req.body;
+    // 🔥 PERBAIKAN DI SINI:
+    // Pisahkan nomorKkRel dan namaKepalaKeluarga agar tidak ikut tersimpan ke dataLingkungan
+    const { nomorKkRel, namaKepalaKeluarga, ...dataLingkungan } = req.body;
 
     // Validasi dasar
     if (!nomorKkRel) {
@@ -33,7 +35,6 @@ const upsertDataKeluarga = async (req, res) => {
       where: { nomorKkRel: nomorKkRel },
       update: {
         ...dataLingkungan,
-        // Pastikan konversi tipe data aman (terutama jumlah anggota keluarga)
         jmlTotal: Number(dataLingkungan.jmlTotal) || 0,
         jmlLansia: Number(dataLingkungan.jmlLansia) || 0,
         jmlDewasa: Number(dataLingkungan.jmlDewasa) || 0,
@@ -100,7 +101,6 @@ const getDataKeluargaByKK = async (req, res) => {
   }
 };
 
-// EXPORT FUNGSI AGAR BISA DIPAKAI DI ROUTES
 module.exports = {
   upsertDataKeluarga,
   getDataKeluargaByKK,
