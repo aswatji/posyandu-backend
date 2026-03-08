@@ -1,14 +1,15 @@
-import express from "express";
-import {
+const express = require("express");
+const {
   upsertDataKeluarga,
   getDataKeluargaByKK,
-} from "../controllers/dataKeluargaController";
+} = require("../controllers/dataKeluargaController");
 
 const router = express.Router();
 
 // Route untuk menyimpan atau mengupdate data (POST)
 router.post("/", upsertDataKeluarga);
 
+// Route untuk mengambil data berdasarkan Nomor KK (GET)
 router.get("/:nomorKkRel", getDataKeluargaByKK);
 
-export default router;
+module.exports = router;

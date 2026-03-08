@@ -1,12 +1,10 @@
-import { Request, Response } from "express";
-import { PrismaClient } from "@prisma/client";
-
+const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
 // ========================================================
 // 1. SIMPAN ATAU PERBARUI DATA KELUARGA (UPSERT)
 // ========================================================
-export const upsertDataKeluarga = async (req, res) => {
+const upsertDataKeluarga = async (req, res) => {
   try {
     const { nomorKkRel, ...dataLingkungan } = req.body;
 
@@ -75,7 +73,7 @@ export const upsertDataKeluarga = async (req, res) => {
 // ========================================================
 // 2. AMBIL DATA KELUARGA BERDASARKAN NOMOR KK
 // ========================================================
-export const getDataKeluargaByKK = async (req, res) => {
+const getDataKeluargaByKK = async (req, res) => {
   try {
     const { nomorKkRel } = req.params;
 
@@ -100,4 +98,10 @@ export const getDataKeluargaByKK = async (req, res) => {
       .status(500)
       .json({ status: "error", pesan: "Terjadi kesalahan pada server." });
   }
+};
+
+// EXPORT FUNGSI AGAR BISA DIPAKAI DI ROUTES
+module.exports = {
+  upsertDataKeluarga,
+  getDataKeluargaByKK,
 };
