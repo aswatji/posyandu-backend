@@ -285,7 +285,13 @@ exports.syncData = async (req, res) => {
       .status(400)
       .json({ status: "gagal", pesan: "Wilayah kerja Kader wajib dikirim!" });
   }
-
+  console.log(`\n=========================================`);
+  console.log(`📥 MENERIMA SYNC DARI: ${wilayahKerja}`);
+  console.log(
+    `Jumlah KK diterima: ${kartu_keluarga ? kartu_keluarga.length : 0}`,
+  );
+  console.log(`Jumlah Warga diterima: ${warga ? warga.length : 0}`);
+  console.log(`=========================================\n`);
   try {
     // 1. SINKRONISASI KARTU KELUARGA
     if (kartu_keluarga && kartu_keluarga.length > 0) {
