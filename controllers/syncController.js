@@ -296,6 +296,10 @@ exports.syncData = async (req, res) => {
     // 1. SINKRONISASI KARTU KELUARGA
     if (kartu_keluarga && kartu_keluarga.length > 0) {
       for (const kk of kartu_keluarga) {
+        if (!w.KartuKeluarga?.connect?.nomorKK && w.is_deleted === 0) {
+          console.log(`❌ DITOLAK (Tanpa KK): NIK ${w.nik} - Nama: ${w.nama}`);
+          continue;
+        }
         const { id, is_synced, is_deleted, ...kkDataLengkap } = kk;
 
         if (is_deleted === 1) {
@@ -304,7 +308,11 @@ exports.syncData = async (req, res) => {
               where: { nomorKK: kkDataLengkap.nomorKK },
             });
           } catch (e) {
-            /* Abaikan jika sudah tidak ada di server */
+            // 🎥 CCTV 3: Lacak jika Prisma yang menolak (misal duplicate NIK dll)
+            console.log(
+              `⚠️ GAGAL PRISMA (Warga NIK ${wargaData.nik}): ${err.message}`,
+            );
+            continue;
           }
         } else {
           // 🔥 PENYARINGAN DATA KARTU KELUARGA (AGAR TIDAK ERROR PRISMA)
