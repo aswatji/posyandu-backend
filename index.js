@@ -8,6 +8,7 @@ const syncRoute = require("./routes/syncRoute");
 const authRoute = require("./routes/authRoute");
 const exportRoute = require("./routes/exportRoute");
 const dataKeluargaRoute = require("./routes/dataKeluargaRoutes");
+const adminRoute = require("./routes/adminRoute");
 
 const app = express();
 
@@ -22,6 +23,7 @@ app.use("/api/sync", syncRoute);
 app.use("/api/auth", authRoute);
 app.use("/api/export", exportRoute);
 app.use("/api/data-keluarga", dataKeluargaRoute);
+app.use("/api/admin", adminRoute);
 
 // Route Default untuk tes server
 app.get("/", (req, res) => {
