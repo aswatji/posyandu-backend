@@ -446,10 +446,178 @@
 //   }
 // };
 
+// const { PrismaClient } = require("@prisma/client");
+// const prisma = new PrismaClient();
+
+// // FUNGSI UNTUK SINKRONISASI DARI HP KE SERVER (PUSH)
+// exports.syncData = async (req, res) => {
+//   // TANGKAP wilayahKerja DARI HP KADER
+//   const { kartu_keluarga, warga, wilayahKerja } = req.body;
+
+//   if (!wilayahKerja) {
+//     return res
+//       .status(400)
+//       .json({ status: "gagal", pesan: "Wilayah kerja Kader wajib dikirim!" });
+//   }
+
+//   console.log(`\n=========================================`);
+//   console.log(`📥 MENERIMA SYNC DARI: ${wilayahKerja}`);
+//   console.log(
+//     `Jumlah KK diterima: ${kartu_keluarga ? kartu_keluarga.length : 0}`,
+//   );
+//   console.log(`Jumlah Warga diterima: ${warga ? warga.length : 0}`);
+//   console.log(`=========================================\n`);
+
+//   try {
+//     // 1. SINKRONISASI KARTU KELUARGA
+//     if (kartu_keluarga && kartu_keluarga.length > 0) {
+//       for (const kk of kartu_keluarga) {
+//         const { id, is_synced, is_deleted, ...kkDataLengkap } = kk;
+
+//         if (is_deleted === 1) {
+//           try {
+//             await prisma.kartuKeluarga.delete({
+//               where: { nomorKK: kkDataLengkap.nomorKK },
+//             });
+//           } catch (e) {
+//             /* Abaikan jika sudah tidak ada di server */
+//           }
+//         } else {
+//           // 🔥 PENYARINGAN DATA KARTU KELUARGA (AGAR TIDAK ERROR PRISMA)
+//           const dataKKValid = {
+//             nomorKK: kkDataLengkap.nomorKK,
+//             kepalaKeluarga: kkDataLengkap.kepalaKeluarga,
+//             alamatLengkap: kkDataLengkap.alamatLengkap,
+//             nomorRT: kkDataLengkap.nomorRT,
+//             nomorRW: kkDataLengkap.nomorRW,
+//             dusun: kkDataLengkap.dusun,
+//             desa: wilayahKerja,
+//             kecamatan: kkDataLengkap.kecamatan,
+//             latitude: kkDataLengkap.latitude,
+//             longitude: kkDataLengkap.longitude,
+//             diinputOleh: kkDataLengkap.diinputOleh,
+//           };
+
+//           try {
+//             await prisma.kartuKeluarga.upsert({
+//               where: { nomorKK: dataKKValid.nomorKK },
+//               update: dataKKValid,
+//               create: dataKKValid,
+//             });
+//           } catch (err) {
+//             console.log(
+//               `⚠️ Gagal simpan KK: ${dataKKValid.nomorKK} - ${err.message}`,
+//             );
+//           }
+//         }
+//       }
+//     }
+
+//     // 2. SINKRONISASI DATA WARGA (SEKARANG TAHAN BANTING)
+//     if (warga && warga.length > 0) {
+//       for (const w of warga) {
+//         // 🎥 CCTV 2: Pengecekan 'w' yang BENAR ada di sini!
+//         if (!w.KartuKeluarga?.connect?.nomorKK && w.is_deleted === 0) {
+//           console.log(`❌ DITOLAK (Tanpa KK): NIK ${w.nik} - Nama: ${w.nama}`);
+//           continue;
+//         }
+
+//         const { id, kkId, is_synced, is_deleted, nomorKkRel, ...wargaData } = w;
+
+//         if (is_deleted === 1) {
+//           try {
+//             await prisma.warga.delete({ where: { nik: wargaData.nik } });
+//           } catch (e) {
+//             /* Abaikan jika sudah tidak ada di server */
+//           }
+//         } else {
+//           try {
+//             await prisma.warga.upsert({
+//               where: { nik: wargaData.nik },
+//               update: {
+//                 ...wargaData,
+//                 KartuKeluarga: wargaData.KartuKeluarga,
+//               },
+//               create: wargaData,
+//             });
+//           } catch (err) {
+//             // 🎥 CCTV 3: Lacak error warga
+//             console.log(
+//               `⚠️ Warga NIK ${wargaData.nik} gagal sinkron: ${err.message}`,
+//             );
+//             continue;
+//           }
+//         }
+//       }
+//     }
+
+//     res.status(200).json({
+//       status: "sukses",
+//       pesan: "Sinkronisasi Offline ke Online berhasil diproses!",
+//     });
+//   } catch (error) {
+//     console.error("ERROR FATAL SYNC:", error);
+//     res.status(500).json({ status: "gagal", pesan: error.message });
+//   }
+// };
+
+// // FUNGSI UNTUK MEMBERIKAN DATA KE HP (PULL)
+// exports.pullData = async (req, res) => {
+//   try {
+//     const { wilayahKerja } = req.body;
+
+//     if (!wilayahKerja) {
+//       return res.status(400).json({
+//         status: "gagal",
+//         pesan: "Wilayah kerja Kader tidak diketahui.",
+//       });
+//     }
+
+//     const kk = await prisma.kartuKeluarga.findMany({
+//       where: { desa: wilayahKerja },
+//     });
+
+//     const warga = await prisma.warga.findMany({
+//       where: {
+//         KartuKeluarga: {
+//           desa: wilayahKerja,
+//         },
+//       },
+//     });
+
+//     res.status(200).json({
+//       status: "sukses",
+//       kartu_keluarga: kk,
+//       warga: warga,
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ status: "gagal", pesan: error.message });
+//   }
+// };
+
+// // FUNGSI CEK VERSI APLIKASI
+// exports.checkVersion = async (req, res) => {
+//   try {
+//     res.status(200).json({
+//       latestVersion: "1.0.2",
+//       minVersion: "1.0.1",
+//       updateUrl: "https://link-ke-apk-baru-atau-playstore.com",
+//       message:
+//         "Ada pembaruan fitur baru untuk aplikasi Posyandu. Wajib update ya, Bu Kader!",
+//     });
+//   } catch (error) {
+//     console.error(error);
+//     res.status(500).json({ status: "gagal", pesan: error.message });
+//   }
+// };
+
 const { PrismaClient } = require("@prisma/client");
 const prisma = new PrismaClient();
 
-// FUNGSI UNTUK SINKRONISASI DARI HP KE SERVER (PUSH)
+// ==============================================================
+// 🚀 FUNGSI UNTUK SINKRONISASI DARI HP KE SERVER (PUSH)
+// ==============================================================
 exports.syncData = async (req, res) => {
   // TANGKAP wilayahKerja DARI HP KADER
   const { kartu_keluarga, warga, wilayahKerja } = req.body;
@@ -491,7 +659,7 @@ exports.syncData = async (req, res) => {
             nomorRT: kkDataLengkap.nomorRT,
             nomorRW: kkDataLengkap.nomorRW,
             dusun: kkDataLengkap.dusun,
-            desa: wilayahKerja,
+            desa: wilayahKerja, // Paksa kolom desa sesuai wilayah kerja kader
             kecamatan: kkDataLengkap.kecamatan,
             latitude: kkDataLengkap.latitude,
             longitude: kkDataLengkap.longitude,
@@ -513,16 +681,39 @@ exports.syncData = async (req, res) => {
       }
     }
 
-    // 2. SINKRONISASI DATA WARGA (SEKARANG TAHAN BANTING)
+    // 2. SINKRONISASI DATA WARGA (SEKARANG TAHAN BANTING & PINTAR)
     if (warga && warga.length > 0) {
       for (const w of warga) {
-        // 🎥 CCTV 2: Pengecekan 'w' yang BENAR ada di sini!
-        if (!w.KartuKeluarga?.connect?.nomorKK && w.is_deleted === 0) {
-          console.log(`❌ DITOLAK (Tanpa KK): NIK ${w.nik} - Nama: ${w.nama}`);
-          continue;
+        // 1. Ekstrak data yang masuk dari HP
+        const {
+          id,
+          kkId,
+          is_synced,
+          is_deleted,
+          nomorKkRel,
+          KartuKeluarga,
+          ...wargaData
+        } = w;
+
+        // 🔥 2. TRIK JITU: Rakit relasi KK secara manual di backend!
+        // Mau HP kirim pakai aplikasi versi lama (nomorKkRel) atau versi baru (KartuKeluarga), backend siap terima!
+        let relasiKkKePrisma = undefined;
+
+        if (nomorKkRel) {
+          // Jika dari aplikasi lama
+          relasiKkKePrisma = { connect: { nomorKK: String(nomorKkRel) } };
+        } else if (KartuKeluarga?.connect?.nomorKK) {
+          // Jika dari aplikasi baru
+          relasiKkKePrisma = KartuKeluarga;
         }
 
-        const { id, kkId, is_synced, is_deleted, nomorKkRel, ...wargaData } = w;
+        // 3. Jika setelah dirakit ternyata tetap tidak ada KK-nya, tolak dengan sopan
+        if (!relasiKkKePrisma && is_deleted === 0) {
+          console.log(
+            `❌ DITOLAK (Tanpa KK): NIK ${wargaData.nik} - Nama: ${wargaData.nama}`,
+          );
+          continue; // Lanjut ke data selanjutnya
+        }
 
         if (is_deleted === 1) {
           try {
@@ -536,12 +727,15 @@ exports.syncData = async (req, res) => {
               where: { nik: wargaData.nik },
               update: {
                 ...wargaData,
-                KartuKeluarga: wargaData.KartuKeluarga,
+                KartuKeluarga: relasiKkKePrisma, // Masukkan relasi yang sudah dirakit
               },
-              create: wargaData,
+              create: {
+                ...wargaData,
+                KartuKeluarga: relasiKkKePrisma, // Masukkan relasi yang sudah dirakit
+              },
             });
           } catch (err) {
-            // 🎥 CCTV 3: Lacak error warga
+            // 🎥 CCTV 3: Lacak error Prisma
             console.log(
               `⚠️ Warga NIK ${wargaData.nik} gagal sinkron: ${err.message}`,
             );
@@ -561,7 +755,9 @@ exports.syncData = async (req, res) => {
   }
 };
 
-// FUNGSI UNTUK MEMBERIKAN DATA KE HP (PULL)
+// ==============================================================
+// 📥 FUNGSI UNTUK MEMBERIKAN DATA KE HP (PULL)
+// ==============================================================
 exports.pullData = async (req, res) => {
   try {
     const { wilayahKerja } = req.body;
@@ -596,7 +792,9 @@ exports.pullData = async (req, res) => {
   }
 };
 
-// FUNGSI CEK VERSI APLIKASI
+// ==============================================================
+// 📱 FUNGSI CEK VERSI APLIKASI
+// ==============================================================
 exports.checkVersion = async (req, res) => {
   try {
     res.status(200).json({
